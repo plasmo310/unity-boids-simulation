@@ -27,8 +27,8 @@
 
 | フォルダ名                                                                              | 概要              | イメージ                                                       |
 |------------------------------------------------------------------------------------|-----------------|------------------------------------------------------------|
-| <a href="/Assets/Boids/Scenes/Boids2D.unity">Assets/Boids/Scenes/Boids2D.unity</a> | Boids2Dシミュレーション | <img width=280 src="/ReadMeContents/01_boids3d.png"></img> |
-| <a href="/Assets/Boids/Scenes/Boids3D.unity">Assets/Boids/Scenes/Boids3D.unity</a> | Boids3Dシミュレーション | <img width=280 src="/ReadMeContents/03_boids2d.png"></img> |
+| <a href="/Assets/Boids/Scenes/Boids2D.unity">Assets/Boids/Scenes/Boids2D.unity</a> | Boids2Dシミュレーション | <img width=400 src="/ReadMeContents/01_boids3d.png"></img> |
+| <a href="/Assets/Boids/Scenes/Boids3D.unity">Assets/Boids/Scenes/Boids3D.unity</a> | Boids3Dシミュレーション | <img width=400 src="/ReadMeContents/03_boids2d.png"></img> |
 ### 主要クラス
 | フォルダ名                                                                                          | 概要 |
 |------------------------------------------------------------------------------------------------| - |
@@ -38,12 +38,13 @@
 | Shaders/Boids2DRender.shader<br>Shaders/Boids3DRender.shader                                   | オブジェクト描画シェーダー |
 
 ### コンポーネントのパラメータ
+※2D、3Dシミュレーション共通
 
 <img width=320 src="/ReadMeContents/02_boids3d_parameters.png"></img>
 
 | パラメータ | 概要 |
 | - | - |
-| Max Boids Num | Boids最大数 |
+| Max Boids Num | Boids生成最大数 |
 | Simulation Area Center | シミュレーション範囲 中心位置 |
 | Simulation Area Size | シミュレーション範囲 サイズ |
 | Max Speed | 速度の最大値 |
@@ -55,4 +56,3 @@
 | Alignment Coefficient | 適用時の重み係数: 整列 |
 | Cohesion Coefficient | 適用時の重み係数: 結合 |
 | Avoid Wall Weight | 壁を避ける強さの重み |
-※2D、3Dシミュレーション共通
