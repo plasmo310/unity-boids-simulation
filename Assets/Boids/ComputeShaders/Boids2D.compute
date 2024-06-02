@@ -1,0 +1,162 @@
+#pragma kernel ForceCS
+#pragma kernel IntegrateCS
+
+// Boidデータの構造体
+struct BoidData
+{
+    float2 velocity; // 速度
+    float2 position; // 位置
+};
+
+// スレッドグループのスレッドサイズ
+#define SIMULATION_BLOCK_SIZE 256
+
+// 構造体データのバッファ
+StructuredBuffer<BoidData> _BoidDataBufferRead;
+RWStructuredBuffer<BoidData> _BoidDataBufferWrite;
+
+// 操舵力のバッファ
+StructuredBuffer<float2> _BoidForceBufferRead;
+RWStructuredBuffer<float2> _BoidForceBufferWrite;
+
+// スクリプトから受け取るパラメータ郡
+int _MaxBoidNum;  // Boid最大オブジェクト数
+float _DeltaTime; // 前フレームから経過した時間
+
+float _MaxSpeed;       // 速度の最大値
+float _MaxSteerForce;  // 操舵する力の最大値
+
+float _SeparationDistance; // 分離: 適用する他の個体との距離
+float _AlignmentDistance;  // 整列: 適用する他の個体との距離
+float _CohesionDistance;   // 結合: 適用する他の個体との距離
+
+float _SeparationCoefficient; // 分離: 適用時の重み係数
+float _AlignmentCoefficient;  // 整列: 適用時の重み係数
+float _CohesionCoefficient;   // 結合: 適用時の重み係数
+
+float2 _SimulationAreaCenter; // シミュレーション範囲の中心座標
+float2 _SimulationAreaSize;   // シミュレーション範囲のサイズ
+float _AvoidWallWeight;       // 壁を避ける強さの重み
+
+// ベクトルの大きさを制限する
+float2 limit(float2 vec, float max)
+{
+    const float length = sqrt(dot(vec, vec));
+    return (length > max && length > 0) ? vec.xy * (max / length) : vec.xy;
+}
+
+// Boidデータ格納用シェアードメモリ
+groupshared BoidData shared_boid_data[SIMULATION_BLOCK_SIZE];
+
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void ForceCS(uint3 dtId : SV_DispatchThreadID, uint groupIndex: SV_GroupIndex)
+{
+    // 現在のデータを取得
+    const unsigned int inIndex = dtId.x;
+    const float2 inPosition = _BoidDataBufferRead[inIndex].position;
+
+    // 操舵力計算用の変数を初期化
+    float2 separationPositionSum = float2(0.0, 0.0);
+    float2 alignmentVelocitySum = float2(0.0, 0.0);
+    float2 cohesionPositionSum = float2(0.0, 0.0);
+    int separationCount = 0;
+    int alignmentCount = 0;
+    int cohesionCount = 0;
+
+    [loop]
+    for (uint blockIndex = 0; blockIndex < (uint) _MaxBoidNum; blockIndex += SIMULATION_BLOCK_SIZE)
+    {
+        // ブロックサイズ分のBoidデータをシェアードメモリに格納
+        shared_boid_data[groupIndex] = _BoidDataBufferRead[blockIndex + groupIndex];
+        GroupMemoryBarrierWithGroupSync(); // グループ内のスレッドが全て到着するまで待機
+
+        // シェアードメモリから全てのブロック内のオブジェクトをチェック
+        for (int targetBoidIndex = 0; targetBoidIndex < SIMULATION_BLOCK_SIZE; targetBoidIndex++)
+        {
+            const float2 targetPosition = shared_boid_data[targetBoidIndex].position;
+            const float2 targetVelocity = shared_boid_data[targetBoidIndex].velocity;
+
+            // 自身との距離を取得
+            const float2 diffPosition = inPosition - targetPosition;
+            const float distance = sqrt(dot(diffPosition, diffPosition));
+            if (distance <= 0.0)
+            {
+                continue;
+            }
+
+            // 分離: 近づきすぎたら離れる
+            if (distance <= _SeparationDistance)
+            {
+                separationPositionSum += diffPosition;
+                separationCount++;
+            }
+
+            // 整列: 近くの向きに合わせる
+            if (distance <= _AlignmentDistance)
+            {
+                alignmentVelocitySum += targetVelocity;
+                alignmentCount++;
+            }
+
+            // 結合: 近くのboidsの重心に近づく
+            if (distance <= _CohesionDistance)
+            {
+                cohesionPositionSum += targetPosition;
+                cohesionCount++;
+            }
+        }
+
+        // グループ内のスレッドが全て到着してから次のグループへ進む
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    // 平均を取り加える力を計算する
+    float2 force = float2(0, 0);
+    if (separationCount > 0)
+    {
+        const float2 separationPosition = separationPositionSum / (float) separationCount;
+        force += separationPosition * _SeparationCoefficient;
+    }
+    if (alignmentCount > 0)
+    {
+        const float2 alignmentVelocity = alignmentVelocitySum / (float) alignmentCount;
+        force += alignmentVelocity * _AlignmentCoefficient;
+    }
+    if (cohesionCount > 0)
+    {
+        const float2 cohesionPosition = cohesionPositionSum / (float) cohesionCount;
+        force += (cohesionPosition - inPosition) * _CohesionCoefficient;
+    }
+
+    // 最終的な結果を書き込み
+    force = limit(force, _MaxSteerForce);
+    _BoidForceBufferWrite[inIndex] = force;
+}
+
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void IntegrateCS(uint3 dtId : SV_DispatchThreadID)
+{
+    // 現在のデータを取得
+    const unsigned int inIndex = dtId.x;
+    BoidData inData = _BoidDataBufferWrite[inIndex];
+    float2 force = _BoidForceBufferRead[inIndex];
+
+    // 境界処理: 壁際に来たら反発力を加える
+    float2 inPosition = inData.position;
+    float2 wc = _SimulationAreaCenter.xy;
+    float2 ws = _SimulationAreaSize.xy;
+    float2 avoidance = float2(0, 0);
+    avoidance.x = (inPosition.x < wc.x - ws.x * 0.5) ? avoidance.x + 1.0 : avoidance.x;
+    avoidance.x = (inPosition.x > wc.x + ws.x * 0.5) ? avoidance.x - 1.0 : avoidance.x;
+    avoidance.y = (inPosition.y < wc.y - ws.y * 0.5) ? avoidance.y + 1.0 : avoidance.y;
+    avoidance.y = (inPosition.y > wc.y + ws.y * 0.5) ? avoidance.y - 1.0 : avoidance.y;
+    force += avoidance * _AvoidWallWeight;
+
+    // 操舵力を速度に適用して位置を更新
+    inData.velocity += force * _DeltaTime;
+    inData.velocity = limit(inData.velocity, _MaxSpeed);
+    inData.position += inData.velocity * _DeltaTime;
+
+    // 計算結果を書き込む
+    _BoidDataBufferWrite[inIndex] = inData;
+}
