@@ -68,9 +68,7 @@ namespace Boids
         /// <summary>
         /// メッシュ描画
         /// </summary>
-        protected virtual void OnRenderMesh()
-        {
-        }
+        protected abstract void OnRenderMesh();
 
         /// <summary>
         /// バッファ解放

@@ -85,17 +85,10 @@ namespace Boids
 
 #endregion
 
+        protected abstract void InitBuffer();
 
-        protected virtual void InitBuffer()
-        {
-        }
+        protected abstract void OnSimulation();
 
-        protected virtual void OnSimulation()
-        {
-        }
-
-        protected virtual void ReleaseBuffer()
-        {
-        }
+        protected abstract void ReleaseBuffer();
     }
 }
