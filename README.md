@@ -27,8 +27,8 @@
 
 | フォルダ名                                                                              | 概要              | イメージ                                                       |
 |------------------------------------------------------------------------------------|-----------------|------------------------------------------------------------|
-| <a href="/Assets/Boids/Scenes/Boids2D.unity">Assets/Boids/Scenes/Boids2D.unity</a> | Boids2Dシミュレーション | <img width=400 src="/ReadMeContents/01_boids3d.png"></img> |
-| <a href="/Assets/Boids/Scenes/Boids3D.unity">Assets/Boids/Scenes/Boids3D.unity</a> | Boids3Dシミュレーション | <img width=400 src="/ReadMeContents/03_boids2d.png"></img> |
+| <a href="/Assets/Boids/Scenes/Boids2D.unity">Assets/Boids/Scenes/Boids2D.unity</a> | Boids2Dシミュレーション | <img width=400 src="/ReadMeContents/03_boids2d.png"></img> |
+| <a href="/Assets/Boids/Scenes/Boids3D.unity">Assets/Boids/Scenes/Boids3D.unity</a> | Boids3Dシミュレーション | <img width=400 src="/ReadMeContents/01_boids3d.png"></img> |
 ### 主要クラス
 | フォルダ名                                                                                          | 概要 |
 |------------------------------------------------------------------------------------------------| - |
